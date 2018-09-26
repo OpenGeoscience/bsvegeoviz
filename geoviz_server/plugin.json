@@ -1,0 +1,10 @@
+{
+    "name": "geoviz_server",
+    "description": "",
+    "version": "0.1.0",
+    "dependencies": [
+        "girder_geospatial",
+        "large_image",
+        "worker"
+    ]
+}
