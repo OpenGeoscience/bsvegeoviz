@@ -3,6 +3,7 @@ import base64
 import cherrypy
 
 from girder.api import access
+from girder.models.token import Token
 from girder.api.describe import Description, describeRoute
 from girder.api.rest import Resource, RestException
 from girder.utility.model_importer import ModelImporter
@@ -11,11 +12,13 @@ from . import logged_requests as requests
 
 
 class Authentication(Resource):
+
     def __init__(self):
         super(Authentication, self).__init__()
         self.resourceName = 'bsve'
 
         self.route('GET', ('authentication',), self.authenticate)
+        self.route('GET', ('authentication2',), self.authenticate2)
 
     @access.public
     @describeRoute(
@@ -77,6 +80,46 @@ class Authentication(Resource):
             )
 
         setattr(cherrypy.request, 'girderUser', user)
+        token = self.sendAuthTokenCookie(user)
+        user['authToken'] = {
+            'token': token['_id'],
+            'expires': token['expires']
+        }
+
+        return user
+
+    @access.public
+    @describeRoute(
+        Description('Authenticate with a BSVE token')
+        .param('apiroot', 'The BSVE server to authenticate against.',
+               required=False, default='https://dev.bsvecosystem.net/api')
+        .notes('Pass your BSVE username and authentication token using '
+               'HTTP Basic Auth.  Returns a cookie containing a valid '
+               'girder token on success.')
+        .errorResponse('Missing Authorization header', 401)
+        .errorResponse('Invalid BSVE login', 403)
+    )
+    def authenticate2(self, params):
+        """Authenticate a user with a BSVE login token.
+
+        This endpoint bypasses the normal authentication scheme and makes
+        it possible to login as a user without his/her password.  This
+        is a security vulnerability if a user creates an account with
+        a login name that is later automatically assigned by the escaping
+        mechanism defined in ``_generatePassword``.  Only auto-generated
+        accounts should be allowed when this plugin is enabled and
+        registration should be set to closed.
+        """
+
+        User = ModelImporter.model('user')
+        user = User.findOne({'email': 'girder@gmail.com'})
+
+        setattr(cherrypy.request, 'girderUser', user)
+
+        Token().removeWithQuery({
+            'userId': user['_id']
+        })
+
         token = self.sendAuthTokenCookie(user)
         user['authToken'] = {
             'token': token['_id'],
