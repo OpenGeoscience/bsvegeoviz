@@ -1,0 +1,78 @@
+version: "3"
+services:
+  broker:
+    image: rabbitmq
+    command: [
+      "rabbitmq-server",
+      "--hostname", "broker",
+      "--name"    , "broker"
+    ]
+
+  database:
+    image: mongo:3.0
+    volumes:
+      - "./docker-volumes/database:/data/db"
+
+  provision:
+    build:
+      context: .
+      dockerfile: Dockerfile.common
+      args:
+        MAKE_PARALLELISM: "${MAKE_PARALLELISM}"
+    depends_on:
+      - database
+      - web
+    links:
+      - database
+      - web
+    environment:
+      - "GIRDER_HOST=web"
+      - "GIRDER_PORT=8080"
+      - "GIRDER_ADMIN_NAME=${GIRDER_ADMIN_NAME}"
+      - "GIRDER_ADMIN_PASS=${GIRDER_ADMIN_PASS}"
+      - "GIRDER_GRIDFS_DB_NAME=local"
+      - "GIRDER_GRIDFS_DB_HOST=database"
+      - "GIRDER_USER_NAME=${GIRDER_USER_NAME}"
+      - "GIRDER_USER_PASS=${GIRDER_USER_PASS}"
+      - "GIRDER_BROKER=amqp://guest@broker"
+    command: [
+      "--provision",
+        "minerva",
+        "database_assetstore",
+        "large_image",
+        "bsve"
+    ]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.common
+      args:
+        MAKE_PARALLELISM: "${MAKE_PARALLELISM}"
+    ports:
+        - "8080:8080"
+    links:
+        - database
+    volumes:
+      - "./docker-volumes/local-assetstore:/local-assetstore"
+      - "./etc/girder.local.cfg:/girder/girder/conf/girder.local.cfg"
+    command: ["--web"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.common
+      args:
+        MAKE_PARALLELISM: "${MAKE_PARALLELISM}"
+    volumes:
+      - "/tmp:/tmp"
+    depends_on:
+      - broker
+    links:
+      - broker
+    environment:
+      - "BROKER=amqp://guest@broker"
+    command: [
+      "--worker",
+      "--loglevel", "INFO"
+    ]

@@ -1,3 +1,12 @@
 [submodule "client/resonantgeoview"]
 	path = client/resonantgeoview
 	url = https://github.com/OpenGeoscience/resonantgeoview.git
+[submodule "submodules/large_image"]
+	path = submodules/large_image
+	url = https://github.com/girder/large_image.git
+[submodule "submodules/girder"]
+	path = submodules/girder
+	url = https://github.com/girder/girder.git
+[submodule "submodules/girder_geospatial"]
+	path = submodules/girder_geospatial
+	url = https://github.com/OpenGeoscience/girder_geospatial.git

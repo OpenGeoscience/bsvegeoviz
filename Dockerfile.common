@@ -1,0 +1,117 @@
+FROM ubuntu:16.04
+MAINTAINER Kitware, Inc. <kitware@kitware.com>
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update                                         \
+ && apt-get install -qy                                    \
+        curl                                               \
+        software-properties-common                         \
+        python-software-properties                         \
+ && add-apt-repository ppa:ubuntugis/ppa                   \
+ && curl -sL https://deb.nodesource.com/setup_8.x | bash - \
+ && apt-get update                                         \
+ && apt-get install -qy                                    \
+        build-essential                                    \
+        git                                                \
+        libcairo-dev                                       \
+        libcurl4-openssl-dev                               \
+        libffi-dev                                         \
+        libjpeg-dev                                        \
+        libjpeg8-dev                                       \
+        libldap2-dev                                       \
+        libpython-dev                                      \
+        libsasl2-dev                                       \
+        libssl-dev                                         \
+        libxml2-dev                                        \
+        libxslt1-dev                                       \
+        nodejs                                             \
+        openssl                                            \
+        python                                             \
+        python-pip                                         \
+        python-tk                                          \
+        wget                                               \
+        zlib1g-dev                                         \
+ && apt-get build-dep -qy                                  \
+        gdal                                               \
+ && apt-get clean                                          \
+ && rm -rf /var/lib/apt/lists/*
+# Upgrade pip as a separate command from upgrading setuptools.  If the major
+# version of pip changes, these seems to be necessary.
+RUN pip install --no-cache-dir -U pip
+RUN pip install --no-cache-dir -U setuptools
+
+RUN echo 'NODE VERSION' \
+ && echo '------------' \
+ && node --version      \
+ && echo                \
+ && echo 'NPM VERSION'  \
+ && echo '-----------'  \
+ && npm --version
+
+ARG MAKE_PARALLELISM
+
+RUN mkdir /tmp/gdal                                                     \
+ && curl -s -o - http://download.osgeo.org/gdal/2.2.3/gdal-2.2.3.tar.gz \
+ |  tar -xzf - -C /tmp/gdal --strip-components 1                        \
+ && cd /tmp/gdal                                                        \
+ && ./configure --prefix=/usr                                           \
+ && make $MAKE_PARALLELISM                                              \
+ && make install                                                        \
+ && cd /                                                                \
+ && rm -rf /tmp/gdal
+
+ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
+ENV C_INCLUDE_PATH=/usr/include/gdal
+ENV C_FORCE_ROOT=1
+
+RUN pip install GDAL==$(gdal-config --version)
+
+RUN mkdir -p /girder-components/plugins
+
+ADD girder /girder
+RUN sed -i "s|'boto3',|'boto3>=1.7,<1.8',\n    'botocore<1.11.0', |g" /girder/setup.py
+
+RUN cd /girder                                                 \
+ && pip install -e /girder[plugins]                            \
+ && pip install -r /girder/requirements-dev.txt                \
+ && pip install -e /girder/clients/python                      \
+ && pip install ansible                                        \
+ && ansible-galaxy install -p /etc/ansible/roles girder.girder
+
+RUN cd /girder                             \
+ && npm install -g grunt-cli               \
+ && npm install --production --unsafe-perm
+
+ADD database_assetstore /girder-components/plugins/database_assetstore
+RUN girder-install plugin -f /girder-components/plugins/database_assetstore
+
+ADD large_image         /girder-components/plugins/large_image
+RUN pip install numpy==1.10.2                                     \
+ && pip install -e /girder-components/plugins/large_image[mapnik] \
+ && girder-install plugin -f /girder-components/plugins/large_image
+
+ADD ansible/bsve        /girder-components/plugins/bsve
+RUN girder-install plugin -f /girder-components/plugins/bsve
+
+ADD minerva             /girder-components/plugins/minerva
+RUN pip install --process-dependency-link -e /girder-components/plugins/minerva \
+ && girder-install plugin -f /girder-components/plugins/minerva
+
+COPY etc/worker.local.cfg /usr/local/lib/python2.7/dist-packages/girder_worker/worker.local.cfg
+
+RUN girder-install web --dev --plugins \
+autojoin,\
+database_assetstore,\
+large_image,\
+minerva,\
+bsve
+
+COPY etc/common-entrypoint.sh /entrypoint.sh
+COPY etc/provision.yml /provision.yml
+COPY etc/provision-inventory /etc/ansible/hosts
+
+EXPOSE 8080
+
+ENTRYPOINT ["bash", "/entrypoint.sh"]
+CMD ["--web"]

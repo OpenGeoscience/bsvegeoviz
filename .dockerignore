@@ -1,0 +1,17 @@
+.git
+.gitignore
+.gitmodules
+
+docker-volumes
+
+submodules/girder/.git
+submodules/girder/.gitignore
+
+submodules/large_image/.git
+submodules/large_image/.gitignore
+
+submodules/girder_geospatial/.git
+submodules/girder_geospatial/.gitignore
+
+client/resonantgeoview/resonantgeoview_server/.git
+client/resonantgeoview/resonantgeoview_server/.gitignore
