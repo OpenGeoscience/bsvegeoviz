@@ -17,10 +17,6 @@ def get_layer_info(event):
 
 
 def load(info):
-
-    urls = ['/static/built/plugins/bsve/extra/BSVE.API.js']
-    events.trigger('minerva.additional_js_urls', urls)
-
     info['apiRoot'].bsve = Authentication()
 
     # Add an endpoint for bsve wms dataset

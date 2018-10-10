@@ -69,7 +69,7 @@ RUN pip install GDAL==$(gdal-config --version)
 
 RUN mkdir -p /girder-components/plugins
 
-ADD girder /girder
+ADD submodules/girder /girder
 RUN sed -i "s|'boto3',|'boto3>=1.7,<1.8',\n    'botocore<1.11.0', |g" /girder/setup.py
 
 RUN cd /girder                                                 \
@@ -83,29 +83,32 @@ RUN cd /girder                             \
  && npm install -g grunt-cli               \
  && npm install --production --unsafe-perm
 
-ADD database_assetstore /girder-components/plugins/database_assetstore
-RUN girder-install plugin -f /girder-components/plugins/database_assetstore
+ADD submodules/girder_geospatial /girder-components/plugins/girder_geospatial
+RUN girder-install plugin -f /girder-components/plugins/girder_geospatial     \
+ && pip install -e /girder-components/plugins/girder_geospatial/types/raster/ \
+ && pip install -e /girder-components/plugins/girder_geospatial/types/vector/
 
-ADD large_image         /girder-components/plugins/large_image
+ADD submodules/large_image /girder-components/plugins/large_image
 RUN pip install numpy==1.10.2                                     \
  && pip install -e /girder-components/plugins/large_image[mapnik] \
  && girder-install plugin -f /girder-components/plugins/large_image
 
-ADD ansible/bsve        /girder-components/plugins/bsve
-RUN girder-install plugin -f /girder-components/plugins/bsve
+ADD client/resonantgeoview/resonantgeoview_server /girder-components/plugins/resonantgeoview_server
+RUN girder-install plugin -f /girder-components/plugins/resonantgeoview_server
 
-ADD minerva             /girder-components/plugins/minerva
-RUN pip install --process-dependency-link -e /girder-components/plugins/minerva \
- && girder-install plugin -f /girder-components/plugins/minerva
+ADD geoviz_server /girder-components/plugins/geoviz_server
+RUN girder-install plugin -f /girder-components/plugins/geoviz_server
 
-COPY etc/worker.local.cfg /usr/local/lib/python2.7/dist-packages/girder_worker/worker.local.cfg
+# COPY etc/worker.local.cfg /usr/local/lib/python2.7/dist-packages/girder_worker/worker.local.cfg
 
-RUN girder-install web --dev --plugins \
-autojoin,\
-database_assetstore,\
-large_image,\
-minerva,\
-bsve
+RUN girder-install web --dev --plugins large_image
+
+ADD client /geoviz_client
+RUN cd /geoviz_client \
+ && npm install \
+ && npm run build \
+ && mv dist ../girder/clients/web/static/external \
+ && cd ..
 
 COPY etc/common-entrypoint.sh /entrypoint.sh
 COPY etc/provision.yml /provision.yml

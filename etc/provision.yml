@@ -82,13 +82,9 @@
       scheme: "http"
       token: "{{ admin['token'] }}"
       plugins:
-        - autojoin
-        - bsve
-        - jobs
-        - worker
-        - database_assetstore
+        - geoviz_server
         - large_image
-        - minerva
+        - resonantgeoview_server
       state: present
 
   - name: Restart Girder Server
@@ -124,12 +120,6 @@
 
       - key: "worker.api_url"
         value: "http://{{ ghost }}:{{ gport }}/api/v1"
-
-      - key: "autojoin"
-        value:
-          - groupId: "{{ dataSharingGroup['gc_return']['_id'] }}"
-            level: 0
-            pattern: "@"
 
       - key: "core.registration_policy"
         value: "closed"

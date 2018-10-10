@@ -37,10 +37,10 @@ services:
       - "GIRDER_BROKER=amqp://guest@broker"
     command: [
       "--provision",
-        "minerva",
-        "database_assetstore",
+        "girder_geospatial",
         "large_image",
-        "bsve"
+        "resonantgeoview_server",
+        "geoviz_server"
     ]
 
   web:
@@ -58,21 +58,21 @@ services:
       - "./etc/girder.local.cfg:/girder/girder/conf/girder.local.cfg"
     command: ["--web"]
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.common
-      args:
-        MAKE_PARALLELISM: "${MAKE_PARALLELISM}"
-    volumes:
-      - "/tmp:/tmp"
-    depends_on:
-      - broker
-    links:
-      - broker
-    environment:
-      - "BROKER=amqp://guest@broker"
-    command: [
-      "--worker",
-      "--loglevel", "INFO"
-    ]
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.common
+  #     args:
+  #       MAKE_PARALLELISM: "${MAKE_PARALLELISM}"
+  #   volumes:
+  #     - "/tmp:/tmp"
+  #   depends_on:
+  #     - broker
+  #   links:
+  #     - broker
+  #   environment:
+  #     - "BROKER=amqp://guest@broker"
+  #   command: [
+  #     "--worker",
+  #     "--loglevel", "INFO"
+  #   ]
